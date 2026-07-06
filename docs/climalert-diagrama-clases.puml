@@ -1,0 +1,203 @@
+@startuml Climalert - Diagrama de Clases
+
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam nodesep 70
+skinparam ranksep 80
+skinparam shadowing false
+skinparam class {
+    BorderColor #555555
+    ArrowColor #555555
+}
+hide empty members
+
+' =========================================================
+' Capa de entrada
+' =========================================================
+package "entrantes\n(Cron Tasks - interfaz entrante)" #FFF3C4 {
+  class ObtencionClimaCronTask {
+    - climaService : ClimaService
+    + ejecutar() : void
+  }
+  class AnalisisAlertasCronTask {
+    - alertaService : AlertaService
+    + ejecutar() : void
+  }
+}
+
+' =========================================================
+' Capa de orquestación de Casos de Uso
+' =========================================================
+package "servicio\n(orquestación de Casos de Uso)" #D6E9FF {
+  class ClimaService {
+    - proveedorClimaExterno : ProveedorClimaExterno
+    - repositorioClimaRegistrado : RepositorioClimaRegistrado
+    - properties : ClimalertProperties
+    + obtenerYRegistrarClimaActual() : ClimaRegistrado
+  }
+  class AlertaService {
+    - repositorioClimaRegistrado : RepositorioClimaRegistrado
+    - notificadorDeAlertas : NotificadorDeAlertas
+    - properties : ClimalertProperties
+    + analizarYNotificarSiCorresponde() : void
+  }
+}
+
+' =========================================================
+' Puertos salientes (izquierda: clima / derecha: notificación)
+' =========================================================
+package "salientes.clima\n(puerto e interfaz saliente)" #FFE1C4 {
+  interface ProveedorClimaExterno {
+    + obtenerClimaActual(ubicacion : String) : DatosClimaExterno
+  }
+  class WeatherApiClimaProvider {
+    - restTemplate : RestTemplate
+    - properties : ClimalertProperties
+    + obtenerClimaActual(ubicacion : String) : DatosClimaExterno
+  }
+  class DatosClimaExterno {
+    - ubicacion : String
+    - temperaturaCelsius : double
+    - sensacionTermicaCelsius : double
+    - humedadPorcentaje : double
+    - condicionDescripcion : String
+    - vientoKph : double
+    - precipitacionMm : double
+    - nubosidadPorcentaje : int
+    - indiceUv : double
+    - fechaHoraObservacion : LocalDateTime
+  }
+  class ProveedorClimaException
+
+  WeatherApiClimaProvider .up.|> ProveedorClimaExterno
+  WeatherApiClimaProvider ..> DatosClimaExterno : crea
+  WeatherApiClimaProvider ..> ProveedorClimaException : lanza
+}
+
+package "salientes.notificacion\n(puerto e interfaz saliente)" #FFE1C4 {
+  interface NotificadorDeAlertas {
+    + notificar(alerta : Alerta) : void
+  }
+  class EmailNotificadorDeAlertas {
+    - mailSender : JavaMailSender
+    - properties : ClimalertProperties
+    + notificar(alerta : Alerta) : void
+  }
+  class NotificacionException
+
+  EmailNotificadorDeAlertas .up.|> NotificadorDeAlertas
+  EmailNotificadorDeAlertas ..> NotificacionException : lanza
+}
+
+' =========================================================
+' Persistencia
+' =========================================================
+package "datos" #E4E4E4 {
+  interface RepositorioClimaRegistrado {
+    + save(entity) : ClimaRegistrado
+    + findTopByUbicacionOrderByFechaHoraObservacionDesc(ubicacion : String) : Optional<ClimaRegistrado>
+  }
+}
+
+' =========================================================
+' Dominio
+' =========================================================
+package "dominio" #D9F2D9 {
+  class ClimaRegistrado {
+    - id : Long
+    - ubicacion : String
+    - temperaturaCelsius : double
+    - sensacionTermicaCelsius : double
+    - humedadPorcentaje : double
+    - condicionDescripcion : String
+    - vientoKph : double
+    - precipitacionMm : double
+    - nubosidadPorcentaje : int
+    - indiceUv : double
+    - fechaHoraObservacion : LocalDateTime
+    - fechaHoraRegistro : LocalDateTime
+    + esCondicionDeAlerta(tempUmbral, humUmbral) : boolean
+  }
+  class Alerta {
+    - climaQueLaOrigino : ClimaRegistrado
+    + detalleCompleto() : String
+  }
+
+  Alerta "1" --> "1" ClimaRegistrado : origina
+}
+
+' =========================================================
+' DTOs y configuración (soporte transversal)
+' =========================================================
+package "dto" #EDEDED {
+  class WeatherApiCurrentResponse {
+    - location : Location
+    - current : Current
+  }
+}
+
+package "config" #EDEDED {
+  class ClimalertProperties {
+    - weatherApi : WeatherApi
+    - alertas : Alertas
+    - scheduling : Scheduling
+  }
+  class AppConfig {
+    + restTemplate(builder : RestTemplateBuilder) : RestTemplate
+  }
+}
+
+' =========================================================
+' Relaciones entre capas
+' =========================================================
+ObtencionClimaCronTask ..> ClimaService : usa
+AnalisisAlertasCronTask ..> AlertaService : usa
+
+ClimaService ..> ProveedorClimaExterno : depende de (DI)
+ClimaService ..> RepositorioClimaRegistrado : depende de (DI)
+ClimaService ..> ClimaRegistrado : crea
+
+AlertaService ..> RepositorioClimaRegistrado : depende de (DI)
+AlertaService ..> NotificadorDeAlertas : depende de (DI)
+AlertaService ..> Alerta : crea
+
+RepositorioClimaRegistrado ..> ClimaRegistrado : persiste
+
+WeatherApiClimaProvider ..> WeatherApiCurrentResponse : deserializa
+
+' Dependencias de configuración (se dibujan mas tenues, van todas al mismo lugar)
+ClimaService .[#999999].> ClimalertProperties : usa
+AlertaService .[#999999].> ClimalertProperties : usa
+WeatherApiClimaProvider .[#999999].> ClimalertProperties : usa
+EmailNotificadorDeAlertas .[#999999].> ClimalertProperties : usa
+AppConfig .[#999999].> ClimalertProperties : habilita
+
+' =========================================================
+' Enlaces invisibles solo para ordenar el layout (no son relaciones reales)
+' =========================================================
+ObtencionClimaCronTask -[hidden]d-> ClimaService
+AnalisisAlertasCronTask -[hidden]d-> AlertaService
+ClimaService -[hidden]d-> WeatherApiClimaProvider
+AlertaService -[hidden]d-> EmailNotificadorDeAlertas
+WeatherApiClimaProvider -[hidden]d-> RepositorioClimaRegistrado
+EmailNotificadorDeAlertas -[hidden]d-> RepositorioClimaRegistrado
+RepositorioClimaRegistrado -[hidden]d-> ClimaRegistrado
+WeatherApiClimaProvider -[hidden]d-> WeatherApiCurrentResponse
+RepositorioClimaRegistrado -[hidden]d-> ClimalertProperties
+
+note top of ObtencionClimaCronTask
+  Cron Task = "interfaz entrante".
+  Reemplaza al Controller: no hay
+  UI ni API expuesta, el disparador
+  es el paso del tiempo (@Scheduled).
+end note
+
+note bottom of ProveedorClimaExterno
+  Puerto saliente: el servicio de
+  dominio depende de esta interfaz,
+  no de WeatherAPI en concreto
+  (Inversión de Dependencias).
+end note
+
+@enduml
