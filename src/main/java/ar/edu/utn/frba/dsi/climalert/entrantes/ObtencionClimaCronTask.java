@@ -22,9 +22,6 @@ public class ObtencionClimaCronTask {
 		try {
 			climaService.obtenerYRegistrarClimaActual();
 		} catch (Exception ex) {
-			// Una tarea programada nunca debe "morir" silenciosamente ni
-			// tirar abajo al scheduler: se loguea el error y se espera
-			// a la siguiente ejecucion.
 			log.error("Error al obtener/registrar el clima actual: {}", ex.getMessage(), ex);
 		}
 	}

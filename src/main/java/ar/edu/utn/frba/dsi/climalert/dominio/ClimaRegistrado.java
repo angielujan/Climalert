@@ -53,11 +53,6 @@ public class ClimaRegistrado {
 		this.fechaHoraRegistro = LocalDateTime.now();
 	}
 
-	/**
-	 * Regla de negocio central del sistema: determina si este registro
-	 * climatico constituye una condicion de alerta, dados los umbrales
-	 * configurados.
-	 */
 	public boolean esCondicionDeAlerta(double temperaturaUmbral, double humedadUmbral) {
 		return this.temperaturaCelsius > temperaturaUmbral
 				&& this.humedadPorcentaje > humedadUmbral;

@@ -1,0 +1,38 @@
+@startuml diagrama-secuencia-analisis-alerta
+
+participant AnalisisAlertasCronTask as CRON2
+participant AlertaService as AS
+participant RepositorioClimaRegistrado as REPO
+database "H2 (archivo)" as DB
+participant ClimaRegistrado as CLIMA
+participant "NotificadorDeAlertas\n(interfaz)" as PORT
+participant EmailNotificadorDeAlertas as EMAIL
+participant "JavaMailSender (SMTP)" as MAIL
+
+loop cada 1 minuto
+    CRON2 -> AS : analizarYNotificarSiCorresponde()
+    AS -> REPO : findTopByUbicacionOrderByFechaHoraObservacionDesc(ubicacion)
+    REPO -> DB : SELECT ... ORDER BY fecha DESC LIMIT 1
+    REPO --> AS : Optional<ClimaRegistrado>
+
+    alt no hay datos registrados todavia
+        AS -> AS : log "aun no hay datos,\nno se analiza nada"
+
+    else hay un ultimo registro
+        AS -> CLIMA : esCondicionDeAlerta(tempUmbral, humUmbral)
+        CLIMA --> AS : boolean
+
+        alt temperatura > umbral Y humedad > umbral
+            AS -> AS : new Alerta(climaRegistrado)
+            AS -> PORT : notificar(alerta)
+            PORT -> EMAIL : (implementacion)
+            EMAIL -> MAIL : send(SimpleMailMessage)
+            MAIL --> EMAIL : OK / error de envio
+
+        else condiciones normales
+            AS -> AS : log "clima normal,\nno se genera alerta"
+        end
+    end
+end
+
+@enduml

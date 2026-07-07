@@ -1,0 +1,29 @@
+@startuml climalert-modelo-de-dominio
+
+skinparam classAttributeIconSize 0
+hide empty members
+
+class ClimaRegistrado {
+  - id : Long
+  - ubicacion : String
+  - temperaturaCelsius : double
+  - sensacionTermicaCelsius : double
+  - humedadPorcentaje : double
+  - condicionDescripcion : String
+  - vientoKph : double
+  - precipitacionMm : double
+  - nubosidadPorcentaje : int
+  - indiceUv : double
+  - fechaHoraObservacion : LocalDateTime
+  - fechaHoraRegistro : LocalDateTime
+  + esCondicionDeAlerta(tempUmbral, humUmbral) : boolean
+}
+
+class Alerta {
+  - climaQueLaOrigino : ClimaRegistrado
+  + detalleCompleto() : String
+}
+
+Alerta "1" --> "1" ClimaRegistrado
+
+@enduml

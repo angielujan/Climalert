@@ -1,0 +1,26 @@
+@startuml diagrama-secuencia-obtencion-clima
+
+participant ObtencionClimaCronTask as CRON1
+participant ClimaService as CS
+participant "ProveedorClimaExterno\n(interfaz)" as PORT
+participant WeatherApiClimaProvider as PROV
+participant "WeatherAPI (externo)" as EXT
+participant RepositorioClimaRegistrado as REPO
+database "H2 (archivo)" as DB
+
+loop cada 5 minutos
+    CRON1 -> CS : obtenerYRegistrarClimaActual()
+    CS -> PORT : obtenerClimaActual(ubicacion)
+    PORT -> PROV : (implementacion)
+    PROV -> EXT : GET /current.json?q=Buenos Aires&key=***
+    EXT --> PROV : JSON (temp_c, humidity,\ncondition, wind_kph, ...)
+    PROV --> CS : DatosClimaExterno
+
+    CS -> CS : new ClimaRegistrado(...)
+
+    CS -> REPO : save(climaRegistrado)
+    REPO -> DB : INSERT clima_registrado
+    REPO --> CS : ClimaRegistrado (persistido)
+end
+
+@enduml

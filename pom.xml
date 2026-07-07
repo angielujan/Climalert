@@ -28,6 +28,11 @@
             <artifactId>spring-boot-starter-restclient</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+
         <!-- Persistencia local (registro historico) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
